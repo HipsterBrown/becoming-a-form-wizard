@@ -8,7 +8,8 @@
   "dependencies": {
     "@slidev/cli": "^0.29.2",
     "@slidev/theme-default": "*",
-    "@slidev/theme-seriph": "*"
+    "@slidev/theme-seriph": "*",
+    "slidev-theme-unicorn": "^1.0.21"
   },
   "name": "becoming-a-form-wizard"
 }

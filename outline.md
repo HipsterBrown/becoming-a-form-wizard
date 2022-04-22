@@ -121,7 +121,7 @@ Shoutout to [robot](thisrobot.life) for introducing the idea of state machines b
 
 `robo-wizard` abstracts the core idea of building flow logic as a domain-specific language (DSL) for state machines. Building it on `xstate` means it _should_ be able to take advantage of the existing framework integrations, debugging, and planning tools.
 
-// show example usage with React, Vue, Svelte, AlpineJS
+// show example usage with TS, React, Vue, Svelte, AlpineJS
 // add `toMachineSchema` method (or better name) to interop with xstate utilities
 
 // how could it power server-side flow? Use it as a durable object / persisted record? Serialize the current state as JSON which can be reinitialized as needed
