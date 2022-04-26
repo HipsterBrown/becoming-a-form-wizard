@@ -1,10 +1,11 @@
 ---
-# try also 'default' to start simple
 theme: unicorn
 layout: intro
+introImage: "/robo-wizard.png"
 defaults:
   handle: HipsterBrown
   website: hipsterbrown.com
+  logoHeader: "/robo-wizard.png"
 ---
 
 # Becoming a Form Wizard
@@ -44,28 +45,43 @@ layout: table-contents
 
 ---
 layout: new-section
+sectionImage: "/ms_wizard_setup.png"
 ---
 
 # What is a wizard?
 
-<!-- What problem is it solving? -->
-
----
+<!--
+Requesting user input to create records or perform actions is not always as simple as a form on a single page. Many user experiences require customers to click through multiple steps to submit all the information needed to complete a complex task.
+-->
 
 <!--
-References to the term "wizard" as a UI pattern have been around since the late 80s, usually to indicate a "step-by-step guide designed to walk you through complex tasks". While this brings the Lord of the Rings and Gandalf the Grey to mind, others might picture the Microsoft Windows Connection Wizard or Turbo Tax for a modern take.
+This UI pattern is often called a “wizard”, a term dating back to the late 80s and early 90s, to indicate “step-by-step guides that are designed to walk you through complex tasks.” A popular source of this phraseology is Microsoft Publisher’s Page Wizard feature and the Connection Wizard.
+-->
+
+---
+layout: iframe
+url: "https://giphy.com/embed/Cu0Iqwal4cPyU"
+---
+
+<!-- Looking for someone to share in an adventure -->
+
+<!--
+While this brings the Lord of the Rings and Gandalf the Grey to mind, others might picture the Microsoft Windows Connection Wizard or Turbo Tax for a modern take.
 -->
 
 
 ---
 
-<!-- git or screenshots of user onboarding / TurboTax -->
+![](/macos_setup_assistant.jpg)
+<!-- gif or screenshots of user onboarding / TurboTax -->
 
 <!--
 Many services and apps will break up their registration process into a series of steps to ease that process, especially if there is quite a bit of information to gather in order to get started. Filling out long forms can be incredibly tedious, so wizards provide an experience where people can focus on individual pieces of those long forms with a sense of accomplishment with each step forward. Based on choices made through the process, the wizard can even help people skip irrelevant paths and potential confusion. I think we've all seen those sections on tax forms that have a bunch of fine-print conditionals that eventually lead to ignoring it altogether. 
 -->
 
 ---
+
+![](/simple_signup_animated.gif)
 
 <!-- Go with the flow, my dude -->
 
@@ -81,9 +97,13 @@ layout: new-section
 
 <!-- Has this worked out well? -->
 
+
+---
+layout: iframe
+url: "https://giphy.com/embed/oM5xTkZM5N1ZK"
 ---
 
-<!-- Travolta looking around gif -->
+<!-- Gandalf SMH -->
 
 <!--
 If you've ever had to tackle this pattern in the past, you might have searched for "multi-step forms" or "form wizard for X" where X is the framework of choice for your product. I know I definitely looked around for such a solution when starting this journey at Betterment. 
@@ -113,6 +133,12 @@ src: ./routed-multi-step-code-2.md
 The greatest weakness of each of the examples is how tied they are to Formik, which ultimately makes sense as example for this library. However, many approaches found online will promote similar patterns especially with route-less steps. They are all generally focused on moving sequentially, a.k.a linear progression. It's not easy to see how conditionally paths could be integrated.
 
 Looking at the purpose-built libraries, nothing appeared to solve all the concerns of building flows at Betterment. So that's when I set out to solve it myself.
+-->
+
+---
+
+<!-- 
+What is the naive core of FlowStateProvider, before state machine refactor? react-router Route components, React Context, useReducer, custom hook
 -->
 
 ---
@@ -153,6 +179,13 @@ Steps could use Formik, any other form library, or nothing at all if no form was
 
 This abstraction worked pretty well for a while until the first need for conditional progression sprung up.
 -->
+
+---
+layout: iframe
+url: "https://giphy.com/embed/FPjbHO0jJxGsE"
+---
+
+<!-- I have no memory of this place -->
 
 ---
 layout: new-section
@@ -213,6 +246,13 @@ stateDiagram-v2
 <!--
   From there, it became clear how to provide conditional logic based on [transitions guards](https://xstate.js.org/docs/guides/guards.html#guards-condition-functions):
 -->
+
+---
+layout: iframe
+url: "https://giphy.com/embed/njYrp176NQsHS"
+---
+
+<!-- You shall not pass -->
 
 ---
 layout: center
@@ -294,6 +334,20 @@ layout: new-section
 # Where do we go from here?
 
 <!-- A wizard's journey is never truly complete --> 
+
+---
+layout: iframe
+url: "https://giphy.com/embed/10es4gkhzGC6zu"
+---
+
+<!-- end? No, the journey doesn't end here -->
+
+---
+layout: iframe
+url: "https://giphy.com/embed/MeMG8qZuni8XS"
+---
+
+<!-- all you have to decide is what to do with the time that is given to you -->
 
 ---
 layout: fact
