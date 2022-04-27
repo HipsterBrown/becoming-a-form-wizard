@@ -14,7 +14,6 @@ Intuitive Multi-Step Workflows w/ State Machines
 
 <!--
 TODO:
-- use famous wizards as filler images and gifs in the presentation
 - rebuild robo-wizard site in something like docusaurus for revamped release
 - figure out official react bindings for full FlowStateProvider replacement
 -->
@@ -80,8 +79,19 @@ Many services and apps will break up their registration process into a series of
 -->
 
 ---
+layout: image-left
+image: "/long_form_example.png"
+---
 
-![](/simple_signup_animated.gif)
+## What we don't want
+
+<---
+
+---
+layout: full
+---
+
+![](/simple_signup.gif)
 
 <!-- Go with the flow, my dude -->
 
@@ -91,23 +101,29 @@ At Betterment, we call this pattern a "flow" (or workflow) and use it a lot! As 
 
 ---
 layout: new-section
+sectionImage: "/hammer-and-wrench.png"
 ---
 
 # How are these experiences typically built?
 
-<!-- Has this worked out well? -->
-
-
 ---
-layout: iframe
-url: "https://giphy.com/embed/oM5xTkZM5N1ZK"
+layout: image
+image: "/react-multi-step-form-DuckDuckGo.png"
 ---
-
-<!-- Gandalf SMH -->
 
 <!--
 If you've ever had to tackle this pattern in the past, you might have searched for "multi-step forms" or "form wizard for X" where X is the framework of choice for your product. I know I definitely looked around for such a solution when starting this journey at Betterment. 
 -->
+
+---
+layout: image
+image: "/formik-og.png"
+---
+
+<!--
+Naturally, I looked to the docs and examples for Formik (the form state manager of choice at Betterment).
+-->
+
 
 ---
 src: ./formik-multi-step-code.md
@@ -137,13 +153,238 @@ Looking at the purpose-built libraries, nothing appeared to solve all the concer
 
 ---
 
+## Primary Directives
+
+1. Flows will be routed, meaning visible steps should match a path in the URL
+2. Navigation among steps should have a single source of truth
+3. Flows are form-agnostic, however they can integrate cleanly with Formik as the preferred form library
+
+<!--
+To direct the work towards building this new solution, I came up with 3 primary directives. The first maintains the stance that good web experiences have URLs and aligned with the existing Rails-driven flows. The second was a learning from the Rails-driven flows that made it complex to maintain our flows. The last one came from looking at our needs at Betterment and how wizards may gather information but it is not required.
+-->
+
+---
+layout: cover-logos
+logos: [
+  "/reactjs.svg",
+  "/react-router.png"
+]
+---
+
+## Ingredients
+
+- React Context
+- react-router Route components
+- Reducer function
+- custom hook
+
 <!-- 
 What is the naive core of FlowStateProvider, before state machine refactor? react-router Route components, React Context, useReducer, custom hook
 -->
 
 ---
-layout: center
+
+## React Context
+
+```tsx
+export interface FlowState<Values> {
+  values?: Values;
+  basePath?: string;
+  currentStep?: string;
+  steps?: Readonly<string[]>;
+}
+
+type Action<Values> =
+  | {
+      type: 'sync';
+      step: string;
+    }
+  | {
+      type: 'updateValues';
+      values: Partial<Values>;
+    };
+
+type FlowContextValue = [FlowState<any>, Dispatch<Action<any>>];
+
+const FlowContext = createContext<FlowContextValue | undefined>(undefined);
+```
+
+<!--
+While TypeScript is not required, I'm displaying the types to help inform the expected inputs to the React Context shared by the flow consumers
+-->
+
 ---
+
+## react-router Route components as steps
+
+```tsx
+function Step<Values>({ children, component: Component, name }) {
+  const { history, location, match } = useContext(RouterContext);
+  const state = useFlowState<Values>();
+  const stepProps: StepProps<Values> = {
+    history,
+    location,
+    match,
+    ...state
+  };
+  const child = Component ? <Component {...stepProps} /> : children(stepProps);
+
+  return <Route path={name} render={() => child} />;
+}
+```
+
+<!--
+The Step component ends up being a very light layer over the Route component, providing access to the shared flow context through the `useFlowState` hook, which we'll cover shortly. The usage should be familiar to anyone who has used react-router in the past. We can see the common "Values" generic being referenced to allow for strong typing around the "Values" being gathered by the flow.
+-->
+
+---
+
+## Reducer function
+
+```tsx
+function buildReducer<Values>(): Reducer<FlowState<Values>, Action<Values>> {
+  return (state, action) => {
+    switch (action.type) {
+      case 'sync':
+        return {...state, currentStep: action.step };
+      case 'updateValues':
+        return {
+          ...state,
+          values: {
+            ...state.values,
+            ...action.values,
+          },
+        };
+      default:
+        return state;
+    }
+  };
+}
+```
+
+<!--
+We can see the FlowState and Action types being used here to define the state and actions accepted by the reducer. The `sync` action is used to keep the current step in sync with the URL. And the `updateValues` action is fairly straightforward, merging the current values in state with new ones provided bythe action. 
+
+It all comes together in the custom hook.
+-->
+
+---
+
+## Custom hook: `useFlowState`
+
+```tsx
+function useFlowState<Values>() {
+  const context = useContext(FlowContext);
+  const history = useHistory();
+  const [flowState, dispatch] = context;
+
+  const sync = useCallback(
+    (step) => {
+      dispatch({ type: 'sync', step });
+    },
+    [dispatch]
+  );
+
+  const updateValues = useCallback(
+    (values>) => {
+      dispatch({ type: 'updateValues', values });
+    },
+    [dispatch]
+  );
+
+  const goToStep = useCallback(
+    (
+      step,
+      values,
+    ) => {
+      if (values) {
+        updateValues(values);
+      }
+      history.push(step);
+    },
+    [flowState.steps, history, updateValues]
+  );
+
+  const goToNextStep = useCallback(
+    (values) => {
+      const nextStep = getNextStep(flowState.steps, flowState.currentStep);
+      if (nextStep) {
+        goToStep(nextStep, values);
+      }
+    },
+    [flowState.steps, flowState.currentStep, goToStep]
+  );
+
+  const goToPreviousStep = useCallback(() => {
+    const previousStep = getPreviousStep(
+      flowState.steps,
+      flowState.currentStep
+    );
+    if (previousStep) {
+      goToStep(previousStep);
+    }
+  }, [flowState.steps, flowState.currentStep, goToStep]);
+
+  return {
+    flowState,
+    sync,
+    updateValues,
+    goToStep,
+    goToNextStep,
+    goToPreviousStep
+  };
+}'
+```
+
+<style>
+.slidev-layout {
+    overflow: scroll;
+  }
+</style>
+
+---
+
+## Bring it together
+
+```tsx
+function FlowStateProvider<Values>({ children, initialValues }) {
+  const location = useLocation();
+  const [steps] = useState(() =>
+    React.Children.toArray(children).reduce(
+      (result, child) => {
+        if (child?.type === Step) {
+          result.push(element.props.name);
+        }
+        return result;
+      },
+      []
+    )
+  );
+  const currentStep = getStepNameFromPath(location.pathname);
+  const defaultStep = steps[0];
+  const value = useReducer(buildReducer<Values>(), {
+    currentStep,
+    values: initialValues,
+    steps
+  });
+
+  return (
+    <FlowContext.Provider value={value}>
+      {children}
+    </FlowContext.Provider>
+  );
+}
+```
+
+<style>
+.slidev-layout {
+    overflow: scroll;
+  }
+</style>
+
+---
+
+## Usage
 
 ```tsx
  <FlowStateProvider>
@@ -158,18 +399,35 @@ So the actual first iteration of what came to be the `FlowStateProvider` pattern
 -->
 
 ---
-layout: center
+layout: full
 ---
 
-```tsx
-const { flowState, goToNextStep } = useFlowState();
+# Usage
 
-// goToNextStep will fit into the type signature of onSubmit, accespting an object a values to update in Context
-return (
-  <Formik initialValues={flowState.values} onSubmit={goToNextStep}>
-    {/* manage form inputs and UI here */}
-  </Formik>
-);
+```tsx
+const MyFirstStep = ({ goToNextStep }) => {
+  return (
+    <Formik onSubmit={goToNextStep}>
+      <Form>
+        <label id="name-label" htmlFor="name">Name</label>
+        <Field type="text" name="name" id="name" aria-labelledby="name-label" />
+        <button type="submit">Continue</button>
+      </Form>
+    </Formik>
+  )
+};
+```
+
+```tsx
+const MySecondStep = ({ flowState }) => {
+  const { name } = flowState.values;
+  return (
+    <section>
+      <h1>Hello, {name}!</h1>
+      {/* maybe another form here */}
+    </section>
+  )
+}
 ```
 
 <!--
@@ -181,11 +439,45 @@ This abstraction worked pretty well for a while until the first need for conditi
 -->
 
 ---
-layout: iframe
-url: "https://giphy.com/embed/FPjbHO0jJxGsE"
+layout: full
 ---
 
-<!-- I have no memory of this place -->
+## Form agnostic
+
+```tsx
+const MyFirstStep = ({ goToNextStep }) => {
+  function handleSubmit (event) {
+    event.preventDefault();
+    const data = new FormData(event.target);
+    const values = Array.from(data.entries()).reduce((result, [name, value]) => {
+      return { ...result, [name]: value };
+    }, {});
+    goToNextStep(values)
+  }
+  return (
+    <form onSubmit={handleSubmit}>
+      <label id="name-label" htmlFor="name">Name</label>
+      <input type="text" id="name" name="name" aria-labelledby="name-label" />
+      <button type="submit">Continue</button>
+    </form>
+  )
+}
+```
+---
+
+## Only one way through
+
+```tsx
+ <FlowStateProvider>
+   <Step name="first" component={MyFirstStep} />
+   <Step name="second" component={MySecondStep} />
+   <Step name="third" component={MyThirdStep} />
+ </FlowStateProvider>
+```
+
+<!--
+While this solution appears to cover the intended usage, we're still stuck with linear progression with no obvious way "forward" ;) What happens when displaying a Step (or set of Steps) is dependent on a choice made in an earlier Step?
+-->
 
 ---
 layout: new-section
@@ -196,6 +488,12 @@ layout: new-section
 <!-- also what the heck is a state machine? -->
 
 ---
+layout: quote
+---
+
+> an abstract machine that can be in exactly one of a finite number of states at any given time. The FSM can change from one state to another in response to some external inputs; the change from one state to another is called a transition. An FSM is defined by a list of its states, its initial state, and the conditions for each transition.
+
+["Finite-state machine" page on Wikipedia](https://en.wikipedia.org/wiki/Finite-state_machine)
 
 <!--
 For folks unfamiliar with state machines (formally known finite-state automata), they provide a mathematical model of computation that describes the behavior of a system that can be in only one state at any given time and the ability to transition between these states determined by specified events.
@@ -204,7 +502,15 @@ To relate this back to flows, those are user experiences that can only display o
 -->
 
 ---
-layout: center
+
+> an ~~abstract machine~~ **interactive experience** that can ~~be in~~ display exactly one of a finite number of ~~states~~ **steps** at any given time. The ~~FSM~~ flow can change from one ~~state~~ step to another in response to some external inputs; the change from one ~~state~~ to another is called a ~~transition~~ **navigation**. ~~An FSM~~ A flow is defined by a list of its ~~states~~ steps, its initial ~~state~~ step, and the conditions for each ~~transition~~ navigation.
+
+<!--
+To relate this back to flows, those are user experiences that can only display one step at a time with specific actions that lead to progressing between them.
+-->
+
+---
+layout: section
 ---
 
 ## How typical multi-step flows navigate
@@ -229,6 +535,10 @@ layout: center
 
 ## How we want to be control the conditional navigation
 
+---
+layout: center
+---
+
 ```mermaid
 stateDiagram-v2
   state when_interest <<choice>>
@@ -242,6 +552,12 @@ stateDiagram-v2
   cash --> complete: next
   complete --> [*]
 ```
+
+<style>
+.slidev-layout {
+    overflow: scroll;
+  }
+</style>
 
 <!--
   From there, it became clear how to provide conditional logic based on [transitions guards](https://xstate.js.org/docs/guides/guards.html#guards-condition-functions):
@@ -258,10 +574,7 @@ url: "https://giphy.com/embed/njYrp176NQsHS"
 layout: center
 ---
 
-```tsx {10,15|all}
-import { FlowStateProvider, Step, when } from '@betterment/js-runtime';
-/* import StartStep, AboutStep, StocksStep, CashStep, CompleteStep from appropriate modules */
-
+```tsx
 const MyFlowController = () => {
   const values = {
     name: '',
@@ -372,3 +685,17 @@ layout: center
 ---
 
 # Thank you!
+
+---
+layout: iframe
+url: "https://giphy.com/embed/oM5xTkZM5N1ZK"
+---
+
+<!-- Gandalf SMH -->
+
+---
+layout: iframe
+url: "https://giphy.com/embed/FPjbHO0jJxGsE"
+---
+
+<!-- I have no memory of this place -->
