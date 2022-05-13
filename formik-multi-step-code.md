@@ -158,3 +158,7 @@ export default App;
     overflow: scroll;
   }
 </style>
+
+<!--
+Looking to the Formik repo, we can find an example for a [`MultipstepWizard`](https://github.com/jaredpalmer/formik/blob/master/examples/MultistepWizard.js) that creates an abstract `Wizard` component with `WizardStep` child components. This allows for nice composition while splitting up a large form, and it could be reused across features as long as they use the same layout. One notable downside is the lack of routing, so the current step of the flow is lost if the page is reloaded.
+-->

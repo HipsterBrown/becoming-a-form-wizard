@@ -12,12 +12,6 @@ defaults:
 
 Intuitive Multi-Step Workflows w/ State Machines
 
-<!--
-TODO:
-- rebuild robo-wizard site in something like docusaurus for revamped release
-- figure out official react bindings for full FlowStateProvider replacement
--->
-
 ---
 layout: cover
 ---
@@ -25,9 +19,9 @@ layout: cover
 # The bit about me
 
 - Nick Hehr
-- Staff Software Engineer, Front End Platform Team
+- Staff Software Engineer, Front End Platform Team @Betterment
 - Empathetic Community Organizer
-- Amateur Embedded Developer
+- Amateur Embedded JS Developer
 - Outdoor cyclist, Indoor climber
 
 ---
@@ -51,9 +45,7 @@ sectionImage: "/ms_wizard_setup.png"
 
 <!--
 Requesting user input to create records or perform actions is not always as simple as a form on a single page. Many user experiences require customers to click through multiple steps to submit all the information needed to complete a complex task.
--->
 
-<!--
 This UI pattern is often called a “wizard”, a term dating back to the late 80s and early 90s, to indicate “step-by-step guides that are designed to walk you through complex tasks.” A popular source of this phraseology is Microsoft Publisher’s Page Wizard feature and the Connection Wizard.
 -->
 
@@ -85,7 +77,13 @@ image: "/long_form_example.png"
 
 ## What we don't want
 
-<---
+<v-clicks>
+
+- overwhelming
+- distracting
+- tedious
+
+</v-clicks>
 
 ---
 layout: full
@@ -108,29 +106,36 @@ sectionImage: "/hammer-and-wrench.png"
 
 ---
 layout: image
-image: "/react-multi-step-form-DuckDuckGo.png"
+image: /react-multi-step-form-DuckDuckGo.png
 ---
 
 <!--
 If you've ever had to tackle this pattern in the past, you might have searched for "multi-step forms" or "form wizard for X" where X is the framework of choice for your product. I know I definitely looked around for such a solution when starting this journey at Betterment. 
 -->
 
+<!--
+If you've ever had to tackle this pattern in the past, you might have searched for "multi-step forms" or "form wizard for X" where X is the framework of choice for your product. I know I definitely looked around for such a solution when starting this journey at Betterment
+-->
+
 ---
 layout: image
-image: "/formik-og.png"
+image: /formik-og.png
 ---
 
 <!--
 Naturally, I looked to the docs and examples for Formik (the form state manager of choice at Betterment).
 -->
 
+<!--
+Naturally, I looked to the docs and examples for Formik (the form state manager of choice at Betterment).
+-->
 
 ---
 src: ./formik-multi-step-code.md
 ---
 
 <!--
-Looking to the Formik repo (the form state manager of choice at Betterment), we can see an example for a [`MultipstepWizard`](https://github.com/jaredpalmer/formik/blob/master/examples/MultistepWizard.js) that creates an abstract `Wizard` component with `WizardStep` child components. This allows for nice composition while splitting up a large form, and it could be reused across features as long as they use the same layout. One notable downside is the lack of routing, so the current step of the flow is lost if the page is reloaded.
+Looking to the Formik repo, we can find an example for a [`MultipstepWizard`](https://github.com/jaredpalmer/formik/blob/master/examples/MultistepWizard.js) that creates an abstract `Wizard` component with `WizardStep` child components. This allows for nice composition while splitting up a large form, and it could be reused across features as long as they use the same layout. One notable downside is the lack of routing, so the current step of the flow is lost if the page is reloaded.
 -->
 
 ---
@@ -160,7 +165,31 @@ Looking at the purpose-built libraries, nothing appeared to solve all the concer
 3. Flows are form-agnostic, however they can integrate cleanly with Formik as the preferred form library
 
 <!--
-To direct the work towards building this new solution, I came up with 3 primary directives. The first maintains the stance that good web experiences have URLs and aligned with the existing Rails-driven flows. The second was a learning from the Rails-driven flows that made it complex to maintain our flows. The last one came from looking at our needs at Betterment and how wizards may gather information but it is not required.
+To direct the work towards building this new solution, I came up with 3 primary directives.
+
+The first maintains the stance that good web experiences have URLs and aligned with the existing Rails-driven flows.
+
+The second was a learning from the Rails-driven flows that made it complex to maintain our flows.
+
+The last one came from looking at our needs at Betterment and how wizards may gather information but it is not required.
+-->
+
+---
+layout: cover
+---
+
+## Dream API
+
+```tsx
+ <Wizard>
+   <Step name="first-name" component={FirstNameStep} />
+   <Step name="last-name" component={LastNameStep} />
+   <Step name="success" component={SuccessStep} />
+ </Wizard>
+```
+
+<!--
+We're going to implement this initial API together to demonstrate the core idea.
 -->
 
 ---
@@ -171,15 +200,17 @@ logos: [
 ]
 ---
 
-## Ingredients
+## Supplies
 
 - React Context
-- react-router Route components
-- Reducer function
+- `useReducer` hook
+- React-Router Route components
 - custom hook
 
 <!-- 
-What is the naive core of FlowStateProvider, before state machine refactor? react-router Route components, React Context, useReducer, custom hook
+react-router Route components, React Context, useReducer, custom hook
+
+If you're not familiar with React and React Router, I'll do my best to give a brief description of the concepts.
 -->
 
 ---
@@ -187,96 +218,110 @@ What is the naive core of FlowStateProvider, before state machine refactor? reac
 ## React Context
 
 ```tsx
-export interface FlowState<Values> {
-  values?: Values;
-  basePath?: string;
-  currentStep?: string;
-  steps?: Readonly<string[]>;
-}
-
-type Action<Values> =
-  | {
-      type: 'sync';
-      step: string;
-    }
-  | {
-      type: 'updateValues';
-      values: Partial<Values>;
-    };
-
-type FlowContextValue = [FlowState<any>, Dispatch<Action<any>>];
-
-const FlowContext = createContext<FlowContextValue | undefined>(undefined);
+const WizardContext = createContext(undefined);
 ```
 
 <!--
-While TypeScript is not required, I'm displaying the types to help inform the expected inputs to the React Context shared by the flow consumers
+We'll start with a React Context object from createContext. This is an object primarily made up of two React components to enable sharing state without manually passing it through props. 
 -->
 
 ---
 
-## react-router Route components as steps
+## Provide some context
 
-```tsx
-function Step<Values>({ children, component: Component, name }) {
-  const { history, location, match } = useContext(RouterContext);
-  const state = useFlowState<Values>();
-  const stepProps: StepProps<Values> = {
-    history,
-    location,
-    match,
-    ...state
-  };
-  const child = Component ? <Component {...stepProps} /> : children(stepProps);
+```tsx {2-5|6|7-11|12-19|all}
+function Wizard({ children, initialValues }) {
+  const steps = React.Children.map(children, (result, child) => {
+    if (child?.type === Step) return child.props.name;
+    return false;
+  }).filter(Boolean);
+  const defaultStep = steps[0];
+  const value = useReducer(wizardReducer, {
+    currentStep: defaultStep,
+    values: initialValues,
+    steps
+  });
 
-  return <Route path={name} render={() => child} />;
+  return (
+    <WizardContext.Provider value={value}>
+      {children}
+      <Switch>
+        <Redirect from="/" to={defaultStep} exact />
+      </Switch>
+    </WizardContext.Provider>
+  );
 }
 ```
 
+<style>
+.slidev-layout {
+    overflow: scroll;
+  }
+</style>
+
 <!--
-The Step component ends up being a very light layer over the Route component, providing access to the shared flow context through the `useFlowState` hook, which we'll cover shortly. The usage should be familiar to anyone who has used react-router in the past. We can see the common "Values" generic being referenced to allow for strong typing around the "Values" being gathered by the flow.
+Here is our basic Provider, where we iterate over the Step components to get their `name` prop in the order in which they are declared.
+
+Then our context value is the result from the `useReducer` hook that has been created with some initial state of the first step in the flow, the initialValues prop, and all the steps found in the `children`.
+
+We include a Redirect to the first step in the flow, so any link to this feature doesn't need to know about the first step.
 -->
 
 ---
 
 ## Reducer function
 
-```tsx
-function buildReducer<Values>(): Reducer<FlowState<Values>, Action<Values>> {
-  return (state, action) => {
-    switch (action.type) {
-      case 'sync':
-        return {...state, currentStep: action.step };
-      case 'updateValues':
-        return {
-          ...state,
-          values: {
-            ...state.values,
-            ...action.values,
-          },
-        };
-      default:
-        return state;
-    }
-  };
-}
+```tsx {3-4|5-12|all}
+const wizardReducer = (state, action) => {
+  switch (action.type) {
+    case 'sync':
+      return {...state, currentStep: action.step };
+    case 'updateValues':
+      return {
+        ...state,
+        values: {
+          ...state.values,
+          ...action.values,
+        },
+      };
+    default:
+      return state;
+  }
+};
 ```
 
 <!--
-We can see the FlowState and Action types being used here to define the state and actions accepted by the reducer. The `sync` action is used to keep the current step in sync with the URL. And the `updateValues` action is fairly straightforward, merging the current values in state with new ones provided bythe action. 
-
-It all comes together in the custom hook.
+The `sync` action is used to keep the current step in sync with the URL. And the `updateValues` action is fairly straightforward, merging the current values in state with new ones provided by the action. 
 -->
 
 ---
 
-## Custom hook: `useFlowState`
+## React-Router Route components as steps
 
 ```tsx
-function useFlowState<Values>() {
-  const context = useContext(FlowContext);
+function Step ({ component: Component, name }) {
+  const state = useWizardContext();
+  return <Route path={name} render={() => <Component {...state} />} />;
+}
+```
+
+<!--
+The Step component ends up being a very light layer over the Route component, providing access to the shared flow context through the `useWizardContext` hook, which we'll cover shortly. The usage should be familiar to anyone who has used react-router in the past.
+
+While step components and others under the Wizard provider can access the `useWizardContext` hook directly, this allows step components to save some boilerplate.
+
+It all comes together in the custom hook.
+-->
+
+
+---
+
+## Custom hook
+
+```tsx {2|5-10|11-17|19-27|28-35|36-43|all}
+function useWizardContext() {
+  const [wizardState, dispatch] = useContext(WizardContext);
   const history = useHistory();
-  const [flowState, dispatch] = context;
 
   const sync = useCallback(
     (step) => {
@@ -293,86 +338,38 @@ function useFlowState<Values>() {
   );
 
   const goToStep = useCallback(
-    (
-      step,
-      values,
-    ) => {
-      if (values) {
-        updateValues(values);
-      }
+    (step, values) => {
+      if (values) updateValues(values);
+      sync(step);
       history.push(step);
     },
-    [flowState.steps, history, updateValues]
+    [flowState.steps, history.push, updateValues, sync]
   );
 
   const goToNextStep = useCallback(
     (values) => {
-      const nextStep = getNextStep(flowState.steps, flowState.currentStep);
-      if (nextStep) {
-        goToStep(nextStep, values);
-      }
+      const nextStep = getNextStep(wizardState.steps, wizardState.currentStep);
+      if (nextStep) goToStep(nextStep, values);
     },
-    [flowState.steps, flowState.currentStep, goToStep]
+    [wizardState.steps, wizardState.currentStep, goToStep]
   );
 
   const goToPreviousStep = useCallback(() => {
     const previousStep = getPreviousStep(
-      flowState.steps,
-      flowState.currentStep
+      wizardState.steps,
+      wizardState.currentStep
     );
-    if (previousStep) {
-      goToStep(previousStep);
-    }
-  }, [flowState.steps, flowState.currentStep, goToStep]);
+    if (previousStep) goToStep(previousStep);
+  }, [wizardState.steps, wizardState.currentStep, goToStep]);
 
   return {
-    flowState,
+    wizardState,
     sync,
     updateValues,
     goToStep,
     goToNextStep,
     goToPreviousStep
   };
-}'
-```
-
-<style>
-.slidev-layout {
-    overflow: scroll;
-  }
-</style>
-
----
-
-## Bring it together
-
-```tsx
-function FlowStateProvider<Values>({ children, initialValues }) {
-  const location = useLocation();
-  const [steps] = useState(() =>
-    React.Children.toArray(children).reduce(
-      (result, child) => {
-        if (child?.type === Step) {
-          result.push(element.props.name);
-        }
-        return result;
-      },
-      []
-    )
-  );
-  const currentStep = getStepNameFromPath(location.pathname);
-  const defaultStep = steps[0];
-  const value = useReducer(buildReducer<Values>(), {
-    currentStep,
-    values: initialValues,
-    steps
-  });
-
-  return (
-    <FlowContext.Provider value={value}>
-      {children}
-    </FlowContext.Provider>
-  );
 }
 ```
 
@@ -381,61 +378,25 @@ function FlowStateProvider<Values>({ children, initialValues }) {
     overflow: scroll;
   }
 </style>
+
+<!--
+The hook accesses the wizard context and contained state + dispatch function. Rather than expose the dispatch function directly to the wizard consumers, we wrap the common actions in functions like `goToNextStep`, `goToPreviousStep`, `updateValues`.
+-->
 
 ---
 
 ## Usage
 
 ```tsx
- <FlowStateProvider>
-   <Step name="first" component={MyFirstStep} />
-   <Step name="second" component={MySecondStep} />
-   <Step name="third" component={MyThirdStep} />
- </FlowStateProvider>
+ <Wizard>
+   <Step name="first-name" component={FirstNameStep} />
+   <Step name="last-name" component={LastNameStep} />
+   <Step name="success" component={SuccessStep} />
+ </Wizard>
 ```
 
 <!--
-So the actual first iteration of what came to be the `FlowStateProvider` pattern didn't use state machines at all, so it only really solved 2 out of the 3 core concerns: routing and composition without being tied to a form library. It made use of React's Context API, a simple reducer function, and React Router Route components.
--->
-
----
-layout: full
----
-
-# Usage
-
-```tsx
-const MyFirstStep = ({ goToNextStep }) => {
-  return (
-    <Formik onSubmit={goToNextStep}>
-      <Form>
-        <label id="name-label" htmlFor="name">Name</label>
-        <Field type="text" name="name" id="name" aria-labelledby="name-label" />
-        <button type="submit">Continue</button>
-      </Form>
-    </Formik>
-  )
-};
-```
-
-```tsx
-const MySecondStep = ({ flowState }) => {
-  const { name } = flowState.values;
-  return (
-    <section>
-      <h1>Hello, {name}!</h1>
-      {/* maybe another form here */}
-    </section>
-  )
-}
-```
-
-<!--
-Steps could use Formik, any other form library, or nothing at all if no form was needed, they just needed to call `goToNextStep` from the StepProps or the `useFlowState` hook:
-
-`goToNextStep` will capture the form values and store it as `flowState.values`, making it clear that Formik manages the form state while the `FlowStateProvider` managed the flow state (as the name implies :D).
-
-This abstraction worked pretty well for a while until the first need for conditional progression sprung up.
+So the actual first iteration of what came to be the `Wizard` pattern didn't use state machines at all, so it only really solved 2 out of the 3 core concerns: routing and composition without being tied to a form library. It made use of React's Context API, a simple reducer function, and React Router Route components.
 -->
 
 ---
@@ -444,34 +405,103 @@ layout: full
 
 ## Form agnostic
 
-```tsx
-const MyFirstStep = ({ goToNextStep }) => {
-  function handleSubmit (event) {
+```tsx {1|2-8|12-18|19-24|all}
+const FirstNameStep = ({ goToNextStep, goToPreviousStep, wizardState }) => {
+  function handleSubmit(event) {
     event.preventDefault();
-    const data = new FormData(event.target);
-    const values = Array.from(data.entries()).reduce((result, [name, value]) => {
-      return { ...result, [name]: value };
-    }, {});
-    goToNextStep(values)
+    const values = Object.fromEntries(new FormData(event.target));
+    goToNextStep(values);
   }
   return (
     <form onSubmit={handleSubmit}>
-      <label id="name-label" htmlFor="name">Name</label>
-      <input type="text" id="name" name="name" aria-labelledby="name-label" />
-      <button type="submit">Continue</button>
+      <label id="name-label" htmlFor="firstName">
+        First Name
+      </label>
+      <input
+        type="text"
+        id="firstName"
+        name="firstName"
+        aria-labelledby="name-label"
+        defaultValue={wizardState.values.firstName}
+      />
+      <div className="actions">
+        <button type="button" role="link" onClick={goToPreviousStep}>
+          Previous
+        </button>
+        <button type="submit">Continue</button>
+      </div>
     </form>
+  );
+};
+```
+
+<!--
+Steps could use Formik, any other form library, or nothing at all if no form was needed, they just needed to call `goToNextStep` from the StepProps or the `useFlowState` hook:
+-->
+
+---
+layout: full
+---
+
+## Formik Usage
+
+```tsx {3|all}
+const FirstNameStep = ({ goToNextStep, goToPreviousStep, wizardState }) => {
+  return (
+    <Formik onSubmit={goToNextStep} initialValues={wizardState.values}>
+      <Form>
+        <label id="name-label" htmlFor="firstName">
+          First Name
+        </label>
+        <Field type="text" name="firstName" id="firstName" aria-labelledby="name-label" />
+        <div className="actions">
+          <button type="button" role="link" onClick={goToPreviousStep}>
+            Previous
+          </button>
+          <button type="submit">Continue</button>
+        </div>
+      </Form>
+    </Formik>
+  )
+};
+```
+
+<!--
+We can save a little bit of boilerplate by hooking straight into the `Formik` component with a familiar API.
+
+`goToNextStep` will capture the form values and store it as `wizardState.values`, making it clear that Formik manages the form state while the `Wizard` managed the flow state (as the name implies :D).
+-->
+
+---
+layout: full
+---
+
+## No Form Needed
+
+```tsx
+const SuccessStep = ({ wizardState }) => {
+  const { firstName, lastName } = wizardState.values;
+  return (
+    <section>
+      <h1>Welcome, {firstName} {lastName}!</h1>
+    </section>
   )
 }
 ```
+
+<!--
+This abstraction worked pretty well for a while until the first need for conditional progression sprung up.
+-->
+
 ---
 
 ## Only one way through
 
 ```tsx
  <FlowStateProvider>
-   <Step name="first" component={MyFirstStep} />
-   <Step name="second" component={MySecondStep} />
-   <Step name="third" component={MyThirdStep} />
+   <Step name="first-name" component={FirstNameStep} />
+   <Step name="last-name" component={LastNameStep} />
+   <Step name="success" component={SuccessStep} />
  </FlowStateProvider>
 ```
 
@@ -481,6 +511,7 @@ While this solution appears to cover the intended usage, we're still stuck with 
 
 ---
 layout: new-section
+sectionImage: '/state-machine-wizard.png'
 ---
 
 # How do state machines help solve this problem?
@@ -497,23 +528,19 @@ layout: quote
 
 <!--
 For folks unfamiliar with state machines (formally known finite-state automata), they provide a mathematical model of computation that describes the behavior of a system that can be in only one state at any given time and the ability to transition between these states determined by specified events.
-
-To relate this back to flows, those are user experiences that can only display one step at a time with specific actions that lead to progressing between them.
 -->
 
 ---
 
-> an ~~abstract machine~~ **interactive experience** that can ~~be in~~ display exactly one of a finite number of ~~states~~ **steps** at any given time. The ~~FSM~~ flow can change from one ~~state~~ step to another in response to some external inputs; the change from one ~~state~~ to another is called a ~~transition~~ **navigation**. ~~An FSM~~ A flow is defined by a list of its ~~states~~ steps, its initial ~~state~~ step, and the conditions for each ~~transition~~ navigation.
+> an ~~abstract machine~~ **interactive experience** that can ~~be in~~ **display** exactly one of a finite number of ~~states~~ **steps** at any given time. The ~~FSM~~ **wizard** can change from one ~~state~~ **step** to another in response to some external inputs; the change from one ~~state~~ **step** to another is called a ~~transition~~ **navigation**. ~~An FSM~~ A ~~flow~~ **wizard** is defined by a list of its ~~states~~ **steps**, its initial ~~state~~ **step**, and the conditions for each ~~transition~~ **navigation**.
 
 <!--
-To relate this back to flows, those are user experiences that can only display one step at a time with specific actions that lead to progressing between them.
+To relate this back to wizards, those are user experiences that can only display one step at a time with specific actions that lead to progressing between them.
 -->
 
 ---
-layout: section
+layout: center
 ---
-
-## How typical multi-step flows navigate
 
 ```mermaid
 stateDiagram-v2
@@ -526,14 +553,23 @@ stateDiagram-v2
 ```
 
 <!--
-Rather than keeping the current step of the flow within the flow state and incrementing/decrementing based on the next/previous actions, it was more deterministic to model each step as a finite state to drive the flow based on next/previous events.
+Rather than keeping the current step of the wizard within the shared state and incrementing/decrementing based on the next/previous actions, it was more deterministic to model each step as a finite state to drive the flow based on next/previous events.
+-->
+
+---
+layout: iframe
+url: "https://stately.ai/registry/machines/5b162dc3-b23f-485e-bd39-c2816a70d0a0.png"
+---
+
+<!--
+This is that same diagram visualized by Stately.AI
 -->
 
 ---
 layout: center
 ---
 
-## How we want to be control the conditional navigation
+# How can we control the conditional navigation?
 
 ---
 layout: center
@@ -543,13 +579,11 @@ layout: center
 stateDiagram-v2
   state when_interest <<choice>>
   [*] --> start
-  start --> about: next
-  about --> start: previous
-  about --> when_interest: next
-  when_interest --> cash: values.interest == 'cash'
-  when_interest --> stocks
-  stocks --> complete: next
-  cash --> complete: next
+  start --> when_interest: next
+  when_interest --> gandalf: values.interest == 'gandalf'
+  when_interest --> merlin
+  merlin --> complete: next
+  gandalf --> complete: next
   complete --> [*]
 ```
 
@@ -565,6 +599,15 @@ stateDiagram-v2
 
 ---
 layout: iframe
+url: "https://stately.ai/registry/machines/612f376c-e1eb-4ed7-96f0-e5a24434f6b3.png"
+---
+
+<!--
+Embed stately.ai editor example of conditional flow machine
+-->
+
+---
+layout: iframe
 url: "https://giphy.com/embed/njYrp176NQsHS"
 ---
 
@@ -574,23 +617,22 @@ url: "https://giphy.com/embed/njYrp176NQsHS"
 layout: center
 ---
 
-```tsx
-const MyFlowController = () => {
+```tsx {7-8|11|12-13|all}
+const MyWizard = () => {
   const values = {
     name: '',
     email: '',
     interest: '',
   };
-  const isInterestedInCash = (currentValues, nextState) => nextState.values.interest === 'cash';
+  const isInterestedInGandalf = (currentValues, nextState) => nextState.values.interest === 'gandalf';
 
   return (
-    <FlowStateProvider initialValues={values}>
-      <Step name="start" component={StartStep} />
-      <Step name="about" component={AboutStep} next={[['cash', when(isInterestedInCash)], 'stocks']} />
-      <Step name="stocks" component={StocksStep} next="complete" />
-      <Step name="cash" component={CashStep} previous="about" />
+    <Wizard initialValues={values}>
+      <Step name="start" component={StartStep} next={[['gandalf', when(isInterestedInGandalf)], 'merlin']} />
+      <Step name="merlin" component={MerlinStep} next="complete" />
+      <Step name="gandalf" component={GandalfStep} previous="start" />
       <Step name="complete" component={CompleteStep} />
-    </FlowStateProvider>
+    </Wizard>
   )
 }
 ```
@@ -604,22 +646,23 @@ url: https://www.youtube.com/embed/NXedb2z7N-4?start=284
 
 ---
 layout: new-section
+sectionImage: "/thinking-face.png"
 ---
 
 # What can we use today?
 
-<!-- Introducing robo-wizard, sort of publicly for the first time -->
-
----
-
 <!--
-`FlowStateProvider` and its associated components / hooks isn't currently open source, although I am allowed to openly talk about them. Instead, I've worked on taking the core idea and creating a framework-agnostic library built on top of xstate called `robo-wizard`.
+`Wizard` and its associated components / hooks isn't currently open source, although I am allowed to openly talk about them. Instead, I've worked on taking the core idea and creating a framework-agnostic library built on top of xstate called `robo-wizard`.
 -->
 
 ---
 layout: iframe
 url: https://robo-wizard.js.org/
 ---
+
+<!--
+`robo-wizard` abstracts the core idea of building flow logic as a domain-specific language (DSL) for state machines. Building it on `xstate` means it _should_ be able to take advantage of the existing framework integrations, debugging, and planning tools.
+-->
 
 ---
 layout: iframe
@@ -629,19 +672,102 @@ url: https://thisrobot.life
 <!-- Shoutout to [robot](thisrobot.life) for introducing the idea of state machines built through functional composition. -->
 
 ---
+layout: iframe
+url: https://xstate.js.org/docs/packages/xstate-fsm
+---
 
 <!--
-`robo-wizard` abstracts the core idea of building flow logic as a domain-specific language (DSL) for state machines. Building it on `xstate` means it _should_ be able to take advantage of the existing framework integrations, debugging, and planning tools.
+Robo Wizard is now powered by XState FSM, which is another minimal finite state machine library provided by the good folks at XState & Stately.ai. Due to the abstracted API of robo-wizard, I was able to replace robot with xstate-fsm without any breaking changes. 
+
+-->
+
+---
+
+```ts
+import { createWizard } from 'robo-wizard';
+
+const wizard = createWizard(['start', 'about', 'complete'], { firstName: '', lastName: '' });
+wizard.start(updatedWizard => { console.log('Updated!', updatedWizard.currentStep), updatedWizard.currentValues });
+
+console.log(wizard.currentValues); // { firstName: '', lastName: '' }
+console.log(wizard.currentStep); // start
+
+wizard.goToNextStep({ values: { firstName: 'Jane' } });
+
+console.log(wizard.currentValues); // { firstName: 'Jane', lastName: '' }
+console.log(wizard.currentStep); // about
+
+wizard.goToNextStep({ values: { lastName: 'Doe' } });
+
+console.log(wizard.currentValues); // { firstName: 'Jane', lastName: 'Doe' }
+console.log(wizard.currentStep); // complete
+```
+
+<!--
+This is the core API of robo-wizard. It doesn't look like much but it provides the building blocks upon which framework and form integrations can be made. And should seem familiar after our walkthrough of the original Wizard structure.
+
+There are currently 3 official packages: robo-wizard (core), @robo-wizard/react, and @robo-wizard/react-router.
+
+There are also a handful of example projects within the repo to show how robo-wizard can be integrated into Vue, Svelte, Alpine, and plain old HTML. 
+-->
+
+---
+
+```ts
+const wizardMachine = createMachine({
+  id: 'wizard',
+  initial: 'start',
+  context: {
+    firstName: '',
+    lastName: ''
+  },
+  states: {
+    start: {
+      on: {
+        next: {
+          target: 'about',
+          actions: ['updateValues'],
+        }
+      }
+    },
+    about: {
+      on: {
+        next: {
+          target: 'complete',
+          actions: ['updateValues']
+        },
+        previous: 'start'
+      }
+    },
+    complete: {
+      on: {
+        previous: 'about'
+      }
+    }
+  }
+});
+```
+
+<style>
+.slidev-layout {
+    overflow: scroll;
+  }
+</style>
+
+<!--
+If you wanted to _mostly_ recreate robo-wizard, this is the xstate machine configuration generated by that one line of `createWizard` in the previous example. 
 -->
 
 ---
 layout: center
+website: robo-wizard.js.org
 ---
 
-# Demo breaking down a W4 (or similar government doc) as a robo-wizard powered feature.
+[Let's check out a demo](https://codesandbox.io/s/robo-wizard-react-router-demo-ot8gqw)
 
 ---
 layout: new-section
+sectionImage: "/direction.jpg"
 ---
 
 # Where do we go from here?
@@ -656,6 +782,30 @@ url: "https://giphy.com/embed/10es4gkhzGC6zu"
 <!-- end? No, the journey doesn't end here -->
 
 ---
+layout: fact
+---
+
+##  How do we communicate about wizards better?
+
+- Visualize wizard behavior 
+- Iterate with a shared language that Product, Design, and Engineering can all understand.
+
+---
+layout: fact
+---
+
+## What are we missing?
+
+<v-clicks>
+
+- entry / exit steps
+- final steps
+- branching flows (nested services) for efficient reuse
+- server-driven transitions
+
+</v-clicks>
+
+---
 layout: iframe
 url: "https://giphy.com/embed/MeMG8qZuni8XS"
 ---
@@ -663,28 +813,13 @@ url: "https://giphy.com/embed/MeMG8qZuni8XS"
 <!-- all you have to decide is what to do with the time that is given to you -->
 
 ---
-layout: fact
+layout: image-center
+website: robo-wizard.js.org
+image: "/lizard-wizard.png"
+imageWidth: '300'
 ---
 
-###  How do we communicate about flows better?
-
-Visualize flow behavior and iterate with a shared language that Product, Design, and Engineering can all understand.
-
----
-layout: fact
----
-
-### What concerns are we missing for the patterns demonstrated above?
-- Entry and exit steps
-- Final steps
-- sub flows (nested services) for efficient reuse
-- other side effects that are of concern
-
----
-layout: center
----
-
-# Thank you!
+# Thank you & happy building!
 
 ---
 layout: iframe
