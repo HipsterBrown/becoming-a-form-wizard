@@ -498,11 +498,11 @@ This abstraction worked pretty well for a while until the first need for conditi
 ## Only one way through
 
 ```tsx
- <FlowStateProvider>
+ <Wizard>
    <Step name="first-name" component={FirstNameStep} />
    <Step name="last-name" component={LastNameStep} />
    <Step name="success" component={SuccessStep} />
- </FlowStateProvider>
+ </Wizard>
 ```
 
 <!--

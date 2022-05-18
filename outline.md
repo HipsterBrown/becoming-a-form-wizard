@@ -2,6 +2,10 @@
 
 Intuitive Multiple-Step Flows
 
+**Promo**
+
+Requesting user input to store data or perform actions is not always as easy as a form on a single page. Many user experiences require people to click through multiple steps to submit all the information needed to complete a complex task. This can seem simple at first before additional requirements and maintenance turn it into a real nightmare. Join me at React Summit to learn about Becoming a Form Wizard by building intuitive multi-step workflows powered by state machines! See you there!
+
 ## What is a wizard? What problem is it solving?
 
 References to the term "wizard" as a UI pattern have been around since the late 80s, usually to indicate a "step-by-step guide designed to walk you through complex tasks". While this brings the Lord of the Rings and Gandalf the Grey to mind, others might picture the Microsoft Windows Connection Wizard or Turbo Tax for a modern take.
