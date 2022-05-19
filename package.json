@@ -6,10 +6,10 @@
     "export": "slidev export"
   },
   "dependencies": {
-    "@slidev/cli": "^0.32.1",
+    "@slidev/cli": "^0.31.4",
     "@slidev/theme-default": "*",
     "@slidev/theme-seriph": "*",
-    "slidev-theme-unicorn": "^1.0.21"
+    "slidev-theme-unicorn": "^1.1.0"
   },
   "name": "becoming-a-form-wizard",
   "devDependencies": {
