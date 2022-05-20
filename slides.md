@@ -63,8 +63,11 @@ While this brings the Lord of the Rings and Gandalf the Grey to mind, others mig
 
 
 ---
+layout: image-center
+image: "/macos_setup_assistant.jpg"
+imageWidth: '600'
+---
 
-![](/macos_setup_assistant.jpg)
 <!-- gif or screenshots of user onboarding / TurboTax -->
 
 <!--
@@ -87,10 +90,10 @@ image: "/long_form_example.png"
 </v-clicks>
 
 ---
-layout: full
+layout: image-center
+image: "/simple_signup.gif"
+imageWidth: '600'
 ---
-
-![](/simple_signup.gif)
 
 <!-- Go with the flow, my dude -->
 
