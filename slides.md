@@ -50,8 +50,9 @@ This UI pattern is often called a “wizard”, a term dating back to the late 8
 -->
 
 ---
-layout: iframe
-url: "https://giphy.com/embed/Cu0Iqwal4cPyU"
+layout: image-center
+image: "/gandalf-adventure.gif"
+imageWidth: '800'
 ---
 
 <!-- Looking for someone to share in an adventure -->
@@ -607,8 +608,9 @@ Embed stately.ai editor example of conditional flow machine
 -->
 
 ---
-layout: iframe
-url: "https://giphy.com/embed/njYrp176NQsHS"
+layout: image-center
+image: "/gandalf-guard.gif"
+imageWidth: '800'
 ---
 
 <!-- You shall not pass -->
@@ -775,8 +777,9 @@ sectionImage: "/direction.jpg"
 <!-- A wizard's journey is never truly complete --> 
 
 ---
-layout: iframe
-url: "https://giphy.com/embed/10es4gkhzGC6zu"
+layout: image-center
+image: "/gandalf-journeys-end.gif"
+imageWidth: '500'
 ---
 
 <!-- end? No, the journey doesn't end here -->
@@ -806,8 +809,9 @@ layout: fact
 </v-clicks>
 
 ---
-layout: iframe
-url: "https://giphy.com/embed/MeMG8qZuni8XS"
+layout: image-center
+image: "/gandalf-time.gif"
+imageWidth: '800'
 ---
 
 <!-- all you have to decide is what to do with the time that is given to you -->
@@ -820,17 +824,3 @@ imageWidth: '300'
 ---
 
 # Thank you & happy building!
-
----
-layout: iframe
-url: "https://giphy.com/embed/oM5xTkZM5N1ZK"
----
-
-<!-- Gandalf SMH -->
-
----
-layout: iframe
-url: "https://giphy.com/embed/FPjbHO0jJxGsE"
----
-
-<!-- I have no memory of this place -->
